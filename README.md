@@ -16,7 +16,6 @@ A CLI tool where you provide a filename and a "key",  and it transforms the file
 ### For the decryption part
 - You choose option 1 (decrypt) on startup
 - The program asks for the key used in the encryption
-- If you enter a key that was not used for the encryption, the contents of the file will be **different** from what they were before, as there is no key comparison as of right now
 - The backup files are deleted and the original file is restored.
 - **As of right now you cannot encrypt a file while there is another one decrypted, works one at a time, will soon change it.**
 

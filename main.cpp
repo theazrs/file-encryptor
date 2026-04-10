@@ -29,6 +29,7 @@ int encrypt(string filename, int key)
     fstream saves("saves.txt", ios::out);
     
     saves << filename << endl; // save original file name 
+    saves << key << endl; // save original key
     if (!inputFile.is_open())
     {
         cerr << "Error: Unable to open file!\n";
@@ -62,7 +63,7 @@ int encrypt(string filename, int key)
 
 
 // function to decrypt 
-void decrypt(int key)
+int decrypt(int key)
 {
     // open files
     fstream saves("saves.txt", ios::in);
@@ -71,6 +72,17 @@ void decrypt(int key)
     // read saves file to retrieve name of original file
     string filename;
     saves >> filename;
+
+    // retrieving old key
+    int oldkey;
+    saves >> oldkey;
+
+    if (oldkey != key)
+    {
+        cerr << "The keys do not match." << endl;
+        return 1;
+    }
+    
 
     fstream originalFile(filename, ios::out | ios::binary); // create original file
 
@@ -90,6 +102,8 @@ void decrypt(int key)
     // remove backups
     fs::remove("encrypted.dat");
     fs::remove("saves.txt");
+
+    return 0;
 
 }
 
@@ -123,14 +137,22 @@ int main()
             }
             else
             {
-                cout << "Problems encrypting the file." << endl;
+                cerr << "Problems encrypting the file." << endl;
                 return 1;
             }
             break;
         case 1:
             cout << "Enter the key to decrypt the file" << endl;
             cin >> key;
-            decrypt(key);
+            if (decrypt(key) == 0) 
+            {
+                cout << "File decrypted" << endl;
+            }
+            else 
+            {
+                cerr << "Unable to decrypt file" << endl;
+                return 1;
+            }
     }
 
     

@@ -44,3 +44,4 @@
 main
 main.dSYM
 encrypted.dat
+.DS_Store

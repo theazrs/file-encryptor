@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem> // c++17
+#include <limits> // for pausing program
 using namespace std;
 namespace fs = std::filesystem;
 
@@ -20,9 +21,22 @@ unsigned char byteShifter(unsigned char uc, int key)
     return uc + key;
 }
 
+void pause(string message = "Press enter to continue...")
+{
+    cout << message << endl;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    cin.get();
+}
+
 // function to open file, apply shift and encrypt to write into new file
 int encrypt(string filename, int key)
 {
+    // check if file exists
+    if (!fs::exists(filename)) {
+        cerr << "Couldn't open file." << endl;
+        return 1;
+    }
+
     // opening files that will be used in the program
     fstream inputFile(filename, ios::in | ios::binary);
     fstream outputFile("encrypted.dat", ios::out | ios::binary);
@@ -30,21 +44,15 @@ int encrypt(string filename, int key)
     
     saves << filename << endl; // save original file name 
     saves << key << endl; // save original key
-    if (!inputFile.is_open())
+    cout << "File successfully opened" << endl;
+    char c;
+    while (inputFile.get(c))
     {
-        cerr << "Error: Unable to open file!\n";
-        return 1;
+        unsigned char uc = byteShifter(static_cast<unsigned char>(c), key);
+        outputFile.put(uc);
     }
-    else
-    {
-        cout << "File successfully opened" << endl;
-        char c;
-        while (inputFile.get(c))
-        {
-            unsigned char uc = byteShifter(static_cast<unsigned char>(c), key);
-            outputFile.put(uc);
-        }
-    }
+    
+
     // close files
     saves.close();
     outputFile.close();
@@ -120,8 +128,17 @@ int main()
     string file;
     int key;
     int choice;
-    cout << "Do you want to encrypt(0) or decrypt(1)?" << endl;
-    cin >> choice;
+    // check if encryption files exist
+    if (fs::exists("encrypted.dat") && fs::exists("saves.txt"))
+    {
+        cout << "Do you want to encrypt(0) or decrypt(1)?" << endl;
+        cin >> choice;
+    }
+    else
+    {
+        cout << "Enter 0 to encrypt" << endl;
+        cin >> choice;  
+    }
     switch (choice)
     {
         case 0:
@@ -138,12 +155,12 @@ int main()
             else
             {
                 cerr << "Problems encrypting the file." << endl;
-                return 1;
             }
             break;
         case 1:
             cout << "Enter the key to decrypt the file" << endl;
             cin >> key;
+
             if (decrypt(key) == 0) 
             {
                 cout << "File decrypted" << endl;
@@ -151,12 +168,13 @@ int main()
             else 
             {
                 cerr << "Unable to decrypt file" << endl;
-                return 1;
             }
+            break;
+
+        default:
+            cerr << "Invalid choice" << endl;
+            break;
     }
-
-    
-
-
+    pause("Program will quit... on enter");
     return 0;
 }

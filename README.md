@@ -8,12 +8,15 @@ A CLI tool where you provide a filename and a "key",  and it transforms the file
 4. WIP
 
 ## How the program works
-- The program first asks if you want to encrypt or decrypt a file, i'll change it later on as initially you do not have any encrypted file to decrypt
+- The program first asks if you want to encrypt a file.
 - So logically you choose option 0 (encrypt)
+
 ### For the encryption part
 - It then asks for a filename you want to encrypt, and a specific key
 - It will save the file's contents and its name. Then delete it.
+  
 ### For the decryption part
+- On the first run, you will not see the decryption option, as there is no file to encrypt
 - You choose option 1 (decrypt) on startup
 - The program asks for the key used in the encryption
 - The backup files are deleted and the original file is restored.

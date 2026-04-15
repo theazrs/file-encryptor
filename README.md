@@ -2,7 +2,7 @@
 A CLI tool where you provide a filename and a "key",  and it transforms the file into unreadable gibberish (and back again).
 
 ## Features
-1. A main menu (WIP)
+1. A main menu 
 2. Encrypt a file with a key
 3. Decrypt a file with a key
 4. WIP

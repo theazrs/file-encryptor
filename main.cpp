@@ -5,6 +5,13 @@
 using namespace std;
 namespace fs = std::filesystem;
 
+// function to clear screen
+void clearScreen() {
+    // \033[2J clears the screen
+    // \033[H moves the cursor to the top-left corner
+    cout << "\033[2J\033[H";
+}
+
 // function to ASCII shift a string
 string shifter(string text, int key)
 {
@@ -20,12 +27,24 @@ unsigned char byteShifter(unsigned char uc, int key)
 {
     return uc + key;
 }
-
+ 
 void pause(string message = "Press enter to continue...")
 {
     cout << message << endl;
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
     cin.get();
+}
+
+// function to display main menu
+void mainMenu()
+{
+    cout << "Please select one option: " << endl;
+    cout << "1. Encrypt a file" << endl;
+    cout << "2. Decrypt a file" << endl;
+    cout << "3. Quit" << endl;
+    
+    //TODO view all encrypted files perhaps?? 
+    
 }
 
 // function to open file, apply shift and encrypt to write into new file
@@ -63,9 +82,12 @@ int encrypt(string filename, int key)
         cerr << "Please make sure the file you are trying to encrypt is closed and re-run the program" << endl;
         fs::remove("encrypted.dat");
         fs::remove("saves.txt");
+
+        // halt
         return 1;
     }
 
+    // end function
     return 0;
 }
 
@@ -88,6 +110,8 @@ int decrypt(int key)
     if (oldkey != key)
     {
         cerr << "The keys do not match." << endl;
+
+        // halt function
         return 1;
     }
     
@@ -111,70 +135,87 @@ int decrypt(int key)
     fs::remove("encrypted.dat");
     fs::remove("saves.txt");
 
+    // end function
     return 0;
-
 }
 
 int main()
 {
-    /*
-    cout << "The encrypted version is:" << endl;
-    string stringg = shifter(text,key);
-    cout << stringg << endl;
-
-    cout << "The decrypted version is:" << endl;
-    cout << shifter(stringg, -key) << endl;
-    */
+    // welcome
+    clearScreen();
+    cout << "Welcome to File Encryptor by Az " << endl;
+    // variables that will be used 
     string file;
     int key;
     int choice;
-    // check if encryption files exist
-    if (fs::exists("encrypted.dat") && fs::exists("saves.txt"))
+
+    while (true)
     {
-        cout << "Do you want to encrypt(0) or decrypt(1)?" << endl;
+        clearScreen();
+        mainMenu();
         cin >> choice;
+        switch (choice)
+        {
+            case 1:
+                clearScreen();   
+                cout << "Enter filename or press 'q' to abort" << endl;
+                cin >> file;
+
+                if (file == "q" || file == "Q") break;
+
+                cout << "Enter the key or enter 0 to abort" << endl;
+                cin >> key;
+
+                if (key == 0) break;
+
+                if (encrypt(file, key) == 0)
+                {
+                    cout << "File successfully encrypted." << endl;
+                }
+                else
+                {
+                    cerr << "Problems encrypting the file." << endl;
+                }
+                break;
+
+            case 2:
+                clearScreen();
+
+                // check if any file is encrypted, otherwise break of case 2
+                if (!fs::exists("encrypted.dat") && !fs::exists("saves.txt"))
+                {
+                    cerr << "No file to decrypt.." << endl;
+                    cerr << "Encrypt a file to be able to decrypt it" << endl;
+                    pause();
+                    break;
+                }
+
+                cout << "Enter the key to decrypt the file or enter 0 to cancel encryption" << endl;
+                cin >> key;
+                
+                if (key == 0) break;
+
+                if (decrypt(key) == 0) 
+                {
+                    cout << "File decrypted" << endl;
+                }
+                else 
+                {
+                    cerr << "Unable to decrypt file" << endl;
+                }
+                break;
+
+            case 3:
+                clearScreen();
+                pause("Enter to confirm choice");
+                return 0;
+            
+            default:
+                clearScreen();
+                cerr << "Invalid choice" << endl;
+                break;
+        }
     }
-    else
-    {
-        cout << "Enter 0 to encrypt" << endl;
-        cin >> choice;  
-    }
-    switch (choice)
-    {
-        case 0:
-            cout << "Enter filename" << endl;
-            cin >> file;
-
-            cout << "Enter the key" << endl;
-            cin >> key;
-
-            if (encrypt(file, key) == 0)
-            {
-                cout << "File successfully encrypted." << endl;
-            }
-            else
-            {
-                cerr << "Problems encrypting the file." << endl;
-            }
-            break;
-        case 1:
-            cout << "Enter the key to decrypt the file" << endl;
-            cin >> key;
-
-            if (decrypt(key) == 0) 
-            {
-                cout << "File decrypted" << endl;
-            }
-            else 
-            {
-                cerr << "Unable to decrypt file" << endl;
-            }
-            break;
-
-        default:
-            cerr << "Invalid choice" << endl;
-            break;
-    }
-    pause("Program will quit... on enter");
+    
     return 0;
 }

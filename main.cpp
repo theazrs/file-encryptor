@@ -19,8 +19,6 @@ void clearScreen()
 void pause(string message = "Press enter to continue...")
 {
     cout << message << endl;
-    // Clear any leftover characters in the input buffer (like newlines)
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
     cin.get();
 }
 
@@ -42,12 +40,6 @@ int encrypt(const string &filename, const string &key)
     if (!fs::exists(filename))
     {
         cerr << "Couldn't open file." << endl;
-        return 1;
-    }
-
-    // Safety check: prevent division by zero if key is empty
-    if (key.empty()) {
-        cerr << "Error: Key cannot be empty." << endl;
         return 1;
     }
 
@@ -107,15 +99,9 @@ int decrypt(const string &key)
     fstream saves("saves.txt", ios::in);
     fstream backupFile("encrypted.dat", ios::in | ios::binary);
 
-    // Safety check: prevent division by zero if key is empty
-    if (key.empty()) {
-        cerr << "Error: Key cannot be empty." << endl;
-        return 1;
-    }
-
     // read saves file to retrieve name of original file
     string filename;
-    saves >> filename;
+    getline(saves, filename);
 
     // Read the stored hash and verify the provided key
     size_t storedHash;
@@ -172,29 +158,57 @@ int main()
         // Handle cases where user enters non-numeric data into the integer 'choice' variable
         if (!(cin >> choice))
         {
-            cin.clear();                                         // reset error flags
-            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // discard bad input
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
             continue;
         }
+        // Clean the buffer once here to handle the newline after choice selection
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
         switch (choice)
         {
         case 1:
             clearScreen();
             cout << "Enter filename or press 'q' to abort" << endl;
-            // Clear the newline character left in the buffer by 'cin >> choice'
-            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Clear buffer before getline
             getline(cin, file);
 
             // Simple exit check
             if (file == "q" || file == "Q")
                 break;
 
-            cout << "Enter the key or enter 0 to abort" << endl;
-            getline(cin, key);
+            {
+                int attempts = 0;
+                bool validKey = false;
+                while (attempts < 3)
+                {
+                    cout << "Enter the key or enter 0 to abort" << endl;
+                    getline(cin, key);
 
-            if (key == "0")
-                break;
+                    if (key == "0")
+                        break;
+
+                    if (key.empty())
+                    {
+                        cout << "Key must not be empty" << endl;
+                        attempts++;
+                    }
+                    else
+                    {
+                        validKey = true;
+                        break;
+                    }
+                }
+
+                if (key == "0")
+                    break;
+
+                if (!validKey)
+                {
+                    cerr << "Encryption unsuccessful." << endl;
+                    pause();
+                    break;
+                }
+            }
 
             if (encrypt(file, key) == 0)
             {
@@ -204,6 +218,7 @@ int main()
             {
                 cerr << "Problems encrypting the file." << endl;
             }
+            pause();
             break;
 
         case 2:
@@ -219,12 +234,17 @@ int main()
             }
 
             cout << "Enter the key to decrypt the file or enter 0 to cancel encryption" << endl;
-            // Clear buffer again to ensure getline doesn't capture a leftover newline
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
             getline(cin, key);
 
             if (key == "0")
                 break;
+
+            if (key.empty())
+            {
+                cerr << "Key must not be empty" << endl;
+                pause();
+                break;
+            }
 
             if (decrypt(key) == 0)
             {
@@ -234,6 +254,7 @@ int main()
             {
                 cerr << "Unable to decrypt file" << endl;
             }
+            pause();
             break;
 
         case 3:

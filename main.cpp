@@ -13,9 +13,10 @@ void clearScreen() {
 }
 
 // function to ASCII shift a string
-string shifter(string text, int key)
+string shifter(const string& text, int key)
 {
     string temp = "";
+    temp.reserve(text.length()); // Pre-allocate memory to avoid multiple reallocations
     for (auto ch : text)
     {
         temp += ch + key;
@@ -48,7 +49,7 @@ void mainMenu()
 }
 
 // function to open file, apply shift and encrypt to write into new file
-int encrypt(string filename, int key)
+int encrypt(const string& filename, int key)
 {
     // check if file exists
     if (!fs::exists(filename)) {
@@ -58,8 +59,13 @@ int encrypt(string filename, int key)
 
     // opening files that will be used in the program
     fstream inputFile(filename, ios::in | ios::binary);
+    if (!inputFile) return 1;
+
     fstream outputFile("encrypted.dat", ios::out | ios::binary);
+    if (!outputFile) return 1;
+
     fstream saves("saves.txt", ios::out);
+    if (!saves) return 1;
     
     saves << filename << endl; // save original file name 
     saves << key << endl; // save original key
@@ -153,7 +159,11 @@ int main()
     {
         clearScreen();
         mainMenu();
-        cin >> choice;
+        if (!(cin >> choice)) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            continue;
+        }
         switch (choice)
         {
             case 1:

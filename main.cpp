@@ -54,24 +54,25 @@ int encrypt(const string &filename, const string &key)
     if (!outputFile)
         return 1;
 
-    // saves.txt acts as a small database for file metadata
-    fstream saves("saves.txt", ios::out);
-    if (!saves)
-        return 1;
+    // Encrypt the filename before storing it
+    string encryptedFilename = filename;
+    for (size_t k = 0; k < encryptedFilename.length(); ++k)
+        encryptedFilename[k] ^= key[k % key.length()];
 
-    saves << filename << endl;            // Store filename so we know how to name it later
-    saves << hash<string>{}(key) << endl; // Store a one-way hash of the key for later verification
-    cout << "File successfully opened" << endl;
+    // Write Metadata Header
+    outputFile << hash<string>{}(key) << endl; // Line 1: Hashed key
+    outputFile << encryptedFilename << endl;   // Line 2: Encrypted filename
+
+    // Scramble the file data
     char c;
     size_t i = 0;
     while (inputFile.get(c))
     {
         // Apply XOR logic. The modulo operator (%) allows us to cycle through the key string repeatedly.
-        outputFile.put(c ^ key[i++ % key.length()]);
+        outputFile.put((unsigned char)c ^ key[i++ % key.length()]);
     }
 
     // close files
-    saves.close();
     outputFile.close();
     inputFile.close();
 
@@ -82,7 +83,6 @@ int encrypt(const string &filename, const string &key)
         cerr << "Unable to complete encryption process.." << endl;
         cerr << "Please make sure the file you are trying to encrypt is closed and re-run the program" << endl;
         fs::remove("encrypted.dat");
-        fs::remove("saves.txt");
 
         // halt
         return 1;
@@ -96,48 +96,81 @@ int encrypt(const string &filename, const string &key)
 int decrypt(const string &key)
 {
     // open files
-    fstream saves("saves.txt", ios::in);
     fstream backupFile("encrypted.dat", ios::in | ios::binary);
+    if (!backupFile)
+        return 1;
 
-    // read saves file to retrieve name of original file
-    string filename;
-    getline(saves, filename);
-
-    // Read the stored hash and verify the provided key
+    // Read the stored hash from the first line and verify the provided key
     size_t storedHash;
-    if (!(saves >> storedHash) || hash<string>{}(key) != storedHash)
+    if (!(backupFile >> storedHash))
+        return 1;
+
+    // Consume the newline character after the hash
+    backupFile.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    if (hash<string>{}(key) != storedHash)
     {
         cerr << "Error: Incorrect key provided. Decryption aborted." << endl;
-        saves.close();
         backupFile.close();
         return 1;
     }
+
+    // Read and decrypt the filename from the second line
+    string encryptedFilename;
+    getline(backupFile, encryptedFilename);
+    string filename = encryptedFilename;
+    for (size_t k = 0; k < filename.length(); ++k) // Undo XOR on filename
+        filename[k] ^= key[k % key.length()];
 
     fstream originalFile(filename, ios::out | ios::binary); // create original file
     if (!originalFile)
         return 1;
 
-    // write to file
+    // Scramble the data back to original
     char c;
     size_t i = 0;
     while (backupFile.get(c))
     {
         // XOR property: (Data ^ Key) ^ Key = Data. We use the exact same logic as encryption.
-        unsigned char uc = c ^ key[i++ % key.length()];
+        unsigned char uc = (unsigned char)c ^ key[i++ % key.length()];
         originalFile.put(uc);
     }
 
     // close files
-    saves.close();
     backupFile.close();
     originalFile.close();
 
     // Clean up metadata files now that the original file is restored
     fs::remove("encrypted.dat");
-    fs::remove("saves.txt");
 
     // end function
     return 0;
+}
+
+// Helper to handle the "Key" prompt logic which was cluttering main()
+string getKeyFromUser()
+{
+    string key;
+    int attempts = 0;
+    while (attempts < 3)
+    {
+        cout << "Enter the key (or '0' to cancel): " << endl;
+        getline(cin, key);
+
+        if (key == "0")
+            return "CANCELLED";
+
+        if (key.empty())
+        {
+            cout << "Key must not be empty!" << endl;
+            attempts++;
+        }
+        else
+        {
+            return key;
+        }
+    }
+    return "FAILED";
 }
 
 int main()
@@ -176,38 +209,14 @@ int main()
             if (file == "q" || file == "Q")
                 break;
 
+            key = getKeyFromUser();
+            if (key == "CANCELLED")
+                break;
+            if (key == "FAILED")
             {
-                int attempts = 0;
-                bool validKey = false;
-                while (attempts < 3)
-                {
-                    cout << "Enter the key or enter 0 to abort" << endl;
-                    getline(cin, key);
-
-                    if (key == "0")
-                        break;
-
-                    if (key.empty())
-                    {
-                        cout << "Key must not be empty" << endl;
-                        attempts++;
-                    }
-                    else
-                    {
-                        validKey = true;
-                        break;
-                    }
-                }
-
-                if (key == "0")
-                    break;
-
-                if (!validKey)
-                {
-                    cerr << "Encryption unsuccessful." << endl;
-                    pause();
-                    break;
-                }
+                cerr << "Encryption aborted after too many empty key attempts." << endl;
+                pause();
+                break;
             }
 
             if (encrypt(file, key) == 0)
@@ -225,7 +234,7 @@ int main()
             clearScreen();
 
             // Guard clause: Ensure the necessary metadata files exist before attempting decryption
-            if (!fs::exists("encrypted.dat") && !fs::exists("saves.txt"))
+            if (!fs::exists("encrypted.dat"))
             {
                 cerr << "No file to decrypt.." << endl;
                 cerr << "Encrypt a file to be able to decrypt it" << endl;
@@ -233,18 +242,9 @@ int main()
                 break;
             }
 
-            cout << "Enter the key to decrypt the file or enter 0 to cancel encryption" << endl;
-            getline(cin, key);
-
-            if (key == "0")
+            key = getKeyFromUser();
+            if (key == "CANCELLED" || key == "FAILED")
                 break;
-
-            if (key.empty())
-            {
-                cerr << "Key must not be empty" << endl;
-                pause();
-                break;
-            }
 
             if (decrypt(key) == 0)
             {

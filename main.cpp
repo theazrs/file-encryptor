@@ -74,7 +74,8 @@ int encrypt(const string &filename, const string &key)
 
     // Write Metadata Header
     outputFile << hash<string>{}(key) << endl; // Line 1: Hashed key
-    outputFile << encryptedFilename << endl;   // Line 2: Encrypted filename
+    outputFile << encryptedFilename.length() << " ";
+    outputFile.write(encryptedFilename.data(), encryptedFilename.length());
 
     // Scramble the file data
     char c;
@@ -128,9 +129,14 @@ int decrypt(const string &storagePath, const string &key)
         return 1;
     }
 
-    // Read and decrypt the filename from the second line
-    string encryptedFilename;
-    getline(backupFile, encryptedFilename);
+    // Read and decrypt the filename using its stored length
+    size_t nameLen;
+    if (!(backupFile >> nameLen))
+        return 1;
+    backupFile.ignore(1); // Consume the single space separator
+
+    string encryptedFilename(nameLen, '\0');
+    backupFile.read(&encryptedFilename[0], nameLen);
     string filename = encryptedFilename;
     for (size_t k = 0; k < filename.length(); ++k) // Undo XOR on filename
         filename[k] ^= key[k % key.length()];

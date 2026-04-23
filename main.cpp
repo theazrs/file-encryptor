@@ -3,8 +3,12 @@
 #include <filesystem> // c++17
 #include <limits>     // for pausing program
 #include <functional> // for hashing
+#include <vector>
 using namespace std;
 namespace fs = std::filesystem;
+
+// Configuration for the encrypted storage
+const string STORAGE_DIR = "vault";
 
 // function to clear screen
 void clearScreen()
@@ -49,8 +53,17 @@ int encrypt(const string &filename, const string &key)
     if (!inputFile)
         return 1;
 
-    // encrypted.dat stores the actual scrambled bytes
-    fstream outputFile("encrypted.dat", ios::out | ios::binary);
+    // Ensure the storage directory exists
+    if (!fs::exists(STORAGE_DIR))
+    {
+        fs::create_directory(STORAGE_DIR);
+    }
+
+    // Generate a unique name for the encrypted file in the vault
+    // We use the original filename and add .enc
+    string storagePath = STORAGE_DIR + "/" + fs::path(filename).filename().string() + ".enc";
+
+    fstream outputFile(storagePath, ios::out | ios::binary);
     if (!outputFile)
         return 1;
 
@@ -82,7 +95,7 @@ int encrypt(const string &filename, const string &key)
     {
         cerr << "Unable to complete encryption process.." << endl;
         cerr << "Please make sure the file you are trying to encrypt is closed and re-run the program" << endl;
-        fs::remove("encrypted.dat");
+        fs::remove(storagePath);
 
         // halt
         return 1;
@@ -93,10 +106,10 @@ int encrypt(const string &filename, const string &key)
 }
 
 // function to decrypt
-int decrypt(const string &key)
+int decrypt(const string &storagePath, const string &key)
 {
     // open files
-    fstream backupFile("encrypted.dat", ios::in | ios::binary);
+    fstream backupFile(storagePath, ios::in | ios::binary);
     if (!backupFile)
         return 1;
 
@@ -141,7 +154,7 @@ int decrypt(const string &key)
     originalFile.close();
 
     // Clean up metadata files now that the original file is restored
-    fs::remove("encrypted.dat");
+    fs::remove(storagePath);
 
     // end function
     return 0;
@@ -231,10 +244,11 @@ int main()
             break;
 
         case 2:
+        {
             clearScreen();
 
-            // Guard clause: Ensure the necessary metadata files exist before attempting decryption
-            if (!fs::exists("encrypted.dat"))
+            // Guard clause: Ensure the vault exists and contains files
+            if (!fs::exists(STORAGE_DIR) || fs::is_empty(STORAGE_DIR))
             {
                 cerr << "No file to decrypt.." << endl;
                 cerr << "Encrypt a file to be able to decrypt it" << endl;
@@ -242,11 +256,42 @@ int main()
                 break;
             }
 
+            // List available encrypted files
+            vector<string> vaultFiles;
+            cout << "Select a file to decrypt:" << endl;
+            int i = 1;
+            for (const auto &entry : fs::directory_iterator(STORAGE_DIR))
+            {
+                if (entry.path().extension() == ".enc")
+                {
+                    vaultFiles.push_back(entry.path().string());
+                    cout << i++ << ". " << entry.path().filename().string() << endl;
+                }
+            }
+
+            if (vaultFiles.empty())
+            {
+                cerr << "No encrypted (.enc) files found in " << STORAGE_DIR << endl;
+                pause();
+                break;
+            }
+
+            int fileChoice;
+            cout << "Enter number (or 0 to cancel): ";
+            if (!(cin >> fileChoice) || fileChoice <= 0 || fileChoice > (int)vaultFiles.size())
+            {
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                break;
+            }
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            file = vaultFiles[fileChoice - 1];
+
             key = getKeyFromUser();
             if (key == "CANCELLED" || key == "FAILED")
                 break;
 
-            if (decrypt(key) == 0)
+            if (decrypt(file, key) == 0)
             {
                 cout << "File decrypted" << endl;
             }
@@ -256,6 +301,7 @@ int main()
             }
             pause();
             break;
+        }
 
         case 3:
             clearScreen();

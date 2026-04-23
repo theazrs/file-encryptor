@@ -45,3 +45,7 @@ main
 main.dSYM
 encrypted.dat
 .DS_Store
+
+# folders for the program itself
+/not encrypted
+/vault

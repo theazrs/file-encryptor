@@ -33,8 +33,6 @@ void mainMenu()
     cout << "1. Encrypt a file" << endl;
     cout << "2. Decrypt a file" << endl;
     cout << "3. Quit" << endl;
-
-    // TODO view all encrypted files perhaps??
 }
 
 // function to open file, apply shift and encrypt to write into new file

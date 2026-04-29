@@ -76,12 +76,16 @@ int encrypt(const string &filename, const string &key)
     outputFile.write(encryptedFilename.data(), encryptedFilename.length());
 
     // Scramble the file data
-    char c;
+    const size_t BUFFER_SIZE = 4096;
+    vector<char> buffer(BUFFER_SIZE);
     size_t i = 0;
-    while (inputFile.get(c))
+    streamsize bytesRead;
+    // Perform read, then evaluate the condition based on how many bytes were actually read
+    while (inputFile.read(buffer.data(), BUFFER_SIZE), (bytesRead = inputFile.gcount()) > 0)
     {
-        // Apply XOR logic. The modulo operator (%) allows us to cycle through the key string repeatedly.
-        outputFile.put((unsigned char)c ^ key[i++ % key.length()]);
+        for (size_t j = 0; j < bytesRead; ++j)
+            buffer[j] ^= key[i++ % key.length()];
+        outputFile.write(buffer.data(), bytesRead);
     }
 
     // close files
@@ -133,9 +137,8 @@ int decrypt(const string &storagePath, const string &key)
         return 1;
     backupFile.ignore(1); // Consume the single space separator
 
-    string encryptedFilename(nameLen, '\0');
-    backupFile.read(&encryptedFilename[0], nameLen);
-    string filename = encryptedFilename;
+    string filename(nameLen, '\0');
+    backupFile.read(filename.data(), nameLen);
     for (size_t k = 0; k < filename.length(); ++k) // Undo XOR on filename
         filename[k] ^= key[k % key.length()];
 
@@ -144,13 +147,16 @@ int decrypt(const string &storagePath, const string &key)
         return 1;
 
     // Scramble the data back to original
-    char c;
+    const size_t BUFFER_SIZE = 4096;
+    vector<char> buffer(BUFFER_SIZE);
     size_t i = 0;
-    while (backupFile.get(c))
+    streamsize bytesRead;
+    // Perform read, then evaluate the condition based on how many bytes were actually read
+    while (backupFile.read(buffer.data(), BUFFER_SIZE), (bytesRead = backupFile.gcount()) > 0)
     {
-        // XOR property: (Data ^ Key) ^ Key = Data. We use the exact same logic as encryption.
-        unsigned char uc = (unsigned char)c ^ key[i++ % key.length()];
-        originalFile.put(uc);
+        for (size_t j = 0; j < bytesRead; ++j)
+            buffer[j] ^= key[i++ % key.length()];
+        originalFile.write(buffer.data(), bytesRead);
     }
 
     // close files
